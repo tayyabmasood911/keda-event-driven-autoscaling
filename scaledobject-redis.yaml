@@ -2,12 +2,36 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: redis-worker-scaler
+  namespace: default
 spec:
   scaleTargetRef:
     name: redis-consumer
+  pollingInterval: 15
+  cooldownPeriod: 300
+  minReplicaCount: 0
+  maxReplicaCount: 50
+  advanced:
+    restoreToOriginalReplicaCount: false
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
   triggers:
   - type: redis
     metadata:
-      address: redis-master.default:6379
+      address: redis-master.default.svc.cluster.local:6379
       listName: task_queue
-      listLength: "50"
+      listLength: "20"
+      enableTLS: "false"
+    authenticationRef:
+      name: redis-trigger-auth

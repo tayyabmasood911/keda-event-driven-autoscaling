@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-aws-sqs-auth
+  namespace: default
+spec:
+  podIdentity:
+    provider: aws-eks
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-trigger-auth
+  namespace: default
+spec:
+  secretTargetRef:
+  - parameter: password
+    name: redis-credentials
+    key: redis-password

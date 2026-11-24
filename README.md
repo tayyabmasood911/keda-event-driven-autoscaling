@@ -1,11 +1,15 @@
-# :rocket: Keda Event Driven Autoscaling
+# :rocket: KEDA Event-Driven Autoscaling
+
+<p align="center">
+  <img src="docs/images/architecture-white.jpg" width="100%" />
+</p>
 
 <div align="center">
 
 [![Status](https://img.shields.io/badge/status-production--ready-brightgreen?style=for-the-badge&logo=git)]()
-[![Domain](https://img.shields.io/badge/domain-Kubernetes--and--GitOps-blueviolet?style=for-the-badge)]()
+[![Domain](https://img.shields.io/badge/domain-Kubernetes--Autoscaling--FinOps-blueviolet?style=for-the-badge)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge&logo=github)](https://github.com/T9113/keda-event-driven-autoscaling/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge&logo=github)](https://github.com/tayyabmasood911/keda-event-driven-autoscaling/pulls)
 [![Security Hardened](https://img.shields.io/badge/security-hardened-red?style=for-the-badge&logo=shield)]()
 
 </div>
@@ -14,45 +18,54 @@
 
 ## :memo: Executive Summary
 
-**Keda Event Driven Autoscaling** is an enterprise-grade production engineering implementation designed for mission-critical deployments. Built to meet stringent requirements for **99.99% availability**, zero-trust security boundaries, automated resilience, and seamless CI/CD delivery.
+**KEDA Event-Driven Autoscaling** delivers an enterprise-grade Kubernetes scaling architecture driven by real-time queue depth, stream lag, and message broker volume. By integrating Kubernetes Event-driven Autoscaling (KEDA) with AWS SQS, Redis, and cloud-native message brokers, this repository achieves genuine **Scale-to-Zero** capability, eliminating idle infrastructure overhead while providing instantaneous burst capacity up to 50+ concurrent replicas.
 
 Key operational outcomes:
-- **Resilience:** Multi-zone high availability with automated fault detection and recovery.
-- **Scalability:** Elastic horizontal scaling responsive to real-time workload demand.
-- **Security:** Strict adherence to least-privilege RBAC, encrypted communications, and zero committed secrets.
-- **Maintainability:** Modular, declarative configuration aligned with cloud-native industry standards.
+- **True Scale-to-Zero FinOps Savings:** Scales application deployments to 0 replicas when queues are idle, reducing cloud compute costs by up to 70%.
+- **Sub-Second Reactive Elasticity:** Instantly spins up consumers upon arrival of the first message without waiting for CPU or memory threshold breaches.
+- **Run-to-Completion Batch Processing:** Leverages `ScaledJob` resources to orchestrate isolated, high-compute one-shot batch tasks to full completion.
+- **Zero-Secret Identity Integration:** Authenticates against AWS services using AWS EKS Pod Identity / IAM Roles for Service Accounts (IRSA) without static credentials.
 
 ---
 
 ## :building_construction: System Architecture
 
+The following diagram outlines the event-driven scaling pipeline from message ingestion through the KEDA controller down to dynamic pod worker scheduling:
+
 ```text
-+-------------------------------------------------------------------------------+
-|                       Keda Event Driven Autoscaling Architecture Blueprint                    |
-|                                                                               |
-|   [Client Ingress] ===> [API Gateway / Traffic Router (TLS 1.3 / mTLS)]       |
-|                                     |                                         |
-|                                     v                                         |
-|                         [Core Workload Cluster]                               |
-|                         (Multi-Replica / Multi-AZ)                            |
-|                                     |                                         |
-|                 +-------------------+-------------------+                     |
-|                 |                                       |                     |
-|                 v                                       v                     |
-|     [Persistence & Storage Layer]           [Observability & Telemetry Engine]|
-|      (Encrypted at Rest / KMS)              (Prometheus / OTLP / OpenSearch)  |
-+-------------------------------------------------------------------------------+
++---------------------------------------------------------------------------------------------------+
+|                        KEDA Event-Driven Autoscaling Architecture Blueprint                       |
+|                                                                                                   |
+|   [Event Producers] ===> [AWS SQS Queue / Redis Task List / Kafka Streams]                        |
+|                                         |                                                         |
+|                                         v (Queue Depth / Message Lag Metrics)                     |
+|                         [KEDA Metrics Server & Controller]                                        |
+|                         (Polling Interval: 10s–15s / Pod Identity IRSA)                           |
+|                                         |                                                         |
+|                     +-------------------+-------------------+                                     |
+|                     |                                       |                                     |
+|                     v (Custom Metrics API)                  v (Direct Job Orchestration)          |
+|         [Kubernetes HPA (0 -> N Pods)]              [KEDA ScaledJob Controller]                   |
+|         (Stabilization Windows: scaleDown 180s)     (One-Shot Batch Jobs to Completion)           |
+|                     |                                       |                                     |
+|                     v                                       v                                     |
+|         [queue-worker-deployment]                   [sqs-batch-job-scaler]                        |
+|         (Elastic 0 to 50 Worker Replicas)           (Isolated Batch Pods with Active Deadlines)   |
++---------------------------------------------------------------------------------------------------+
 ```
+
+> High-resolution architectural vector diagram is available at [`docs/images/architecture.svg`](docs/images/architecture.svg).
 
 ---
 
 ## :sparkles: Key Enterprise Capabilities
 
-- :zap: **High Availability & Fault Tolerance:** Eliminates single points of failure via multi-node redundancy and health check probes.
-- :shield: **Zero-Trust Security Posture:** Enforces non-root runtime environments, ephemeral credentials, and automated vulnerability scanning.
-- :chart_with_upwards_trend: **Elastic Autoscaling:** Dynamic resource provisioning based on custom throughput, memory pressure, and queue depth.
-- :mag: **Full-Stack Observability:** Standardized structured telemetry, metrics instrumentation, and distributed request tracing.
-- :package: **GitOps & CI/CD Automation:** Infrastructure and configuration managed declaratively with automated testing and continuous deployment.
+- :chart_with_upwards_trend: **Multi-Trigger Scalers:** Production-grade `ScaledObject` configurations for AWS SQS (`aws-sqs-queue`) and Redis Lists/Streams (`redis`).
+- :zero: **Scale-to-Zero Architecture:** Automatically scales `replicas: 0` when work queues are cleared, eliminating idle CPU and RAM footprint.
+- :shield: **TriggerAuthentication Security:** Decoupled credential binding supporting AWS EKS Pod Identity, IRSA, and Kubernetes Secret references.
+- :traffic_light: **Stabilization & Flapping Prevention:** Fine-tuned HPA behaviors with `scaleUp` immediate burst (0s stabilization) and `scaleDown` gradual draining (180s–300s window).
+- :running: **Batch Execution with ScaledJob:** Automatically creates individual Kubernetes Jobs per batch queue threshold with backoff limits and active deadlines.
+- :ambulance: **Fault-Tolerant Fallback:** Configurable `fallback` block providing baseline worker capacity if message broker metrics become temporarily unreachable.
 
 ---
 
@@ -60,36 +73,98 @@ Key operational outcomes:
 
 ```text
 .
-|-- config/              # Declarative configuration and environment definitions
-|-- src/                 # Production source code and manifests
-|-- scripts/             # Operational automation, setup, and maintenance scripts
-|-- tests/               # Comprehensive validation and unit test suites
-|-- LICENSE              # MIT Open Source License
-`-- README.md            # Enterprise architectural documentation
+|-- .github/
+|   `-- workflows/
+|       `-- ci.yml                   # Automated validation CI pipeline
+|-- config/
+|   `-- production.env.example       # Production environment baseline variables
+|-- docs/
+|   `-- images/
+|       |-- architecture-white.jpg   # High-resolution architectural overview
+|       `-- architecture.svg         # Detailed vector topology blueprint
+|-- scripts/
+|   `-- healthcheck.sh               # Health check verification script
+|-- tests/
+|   `-- test_validation.py           # Integrity test suite
+|-- consumer-deployment.yaml         # Resilient worker deployment scaled by KEDA
+|-- scaledjob-sqs.yaml               # Event-driven batch processing ScaledJob
+|-- scaledobject-redis.yaml          # Advanced ScaledObject for Redis List triggers
+|-- scaledobject-sqs.yaml            # Advanced ScaledObject for AWS SQS triggers
+|-- trigger-auth.yaml                # TriggerAuthentication for AWS IRSA and Secrets
+|-- .gitattributes                   # GitHub Linguist language overrides
+|-- LICENSE                          # MIT License
+|-- Makefile                         # Automation lifecycle targets
+|-- README.md                        # Enterprise architectural documentation
+`-- SECURITY.md                      # Security and vulnerability policy
 ```
 
 ---
 
-## :zap: Quick Start & Deployment
+## :clipboard: Prerequisites
 
-### Prerequisites
-- Git `>= 2.40`
-- Docker Engine `>= 24.0` / Cloud CLI (AWS / GCP / Azure / Kubernetes)
+Ensure the following prerequisites are met before deploying KEDA manifests:
 
-### Deployment Steps
+| Component | Minimum Version | Description |
+| :--- | :--- | :--- |
+| **Kubernetes** | `>= 1.28.0` | EKS, GKE, AKS, or bare-metal cluster with Custom Metrics API enabled |
+| **KEDA Operator** | `>= 2.13.0` | Installed in `keda` namespace with CRDs registered |
+| **kubectl** | `>= 1.28.0` | Standard Kubernetes command-line interface |
+| **Helm** | `>= 3.12.0` | For deploying KEDA and companion charts |
+| **AWS CLI** | `>= 2.15.0` | For configuring SQS IAM roles and trust relationships |
+
+---
+
+## :zap: Quick Start & Deployment Guide
+
+### 1. Install KEDA via Helm
+If KEDA is not already installed in your cluster:
+
 ```bash
-# 1. Clone the repository
-git clone https://github.com/T9113/keda-event-driven-autoscaling.git
-cd keda-event-driven-autoscaling
+helm repo add kedacore https://kedacore.github.io/charts
+helm repo update
+helm upgrade --install keda kedacore/keda --namespace keda --create-namespace
+```
 
-# 2. Inspect and configure environment parameters
-cp config/example.env config/.env
+### 2. Deploy Trigger Authentication
+Establish secure authentication credentials for AWS and Redis:
 
-# 3. Validate configurations and syntax
-# Run linters, dry-run validations, or unit test suites
+```bash
+kubectl apply -f trigger-auth.yaml
+```
 
-# 4. Deploy workloads / infrastructure
-# Execute deployment manifests or container runtime
+### 3. Deploy Consumer Workloads
+Deploy the baseline target consumer deployment (initialized at 0 replicas):
+
+```bash
+kubectl apply -f consumer-deployment.yaml
+```
+
+### 4. Deploy KEDA ScaledObjects & ScaledJobs
+Activate event-driven autoscaling for Redis, SQS, and one-shot batch tasks:
+
+```bash
+# Enable AWS SQS autoscaling (0 -> 50 replicas)
+kubectl apply -f scaledobject-sqs.yaml
+
+# Enable Redis queue autoscaling (0 -> 50 replicas)
+kubectl apply -f scaledobject-redis.yaml
+
+# Enable SQS batch job autoscaling
+kubectl apply -f scaledjob-sqs.yaml
+```
+
+### 5. Verify Autoscaling Status
+Inspect active ScaledObjects and observe dynamic scaling behavior:
+
+```bash
+# Inspect ScaledObjects status and target replicas
+kubectl get scaledobject -A
+
+# Check generated HPA resources
+kubectl get hpa
+
+# Stream consumer deployment replica counts during load
+kubectl get deployment queue-worker-deployment -w
 ```
 
 ---
@@ -98,19 +173,21 @@ cp config/example.env config/.env
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `ENVIRONMENT` | string | `production` | Deployment environment target (`staging`, `production`) |
-| `LOG_LEVEL` | string | `info` | Structured logging verbosity (`debug`, `info`, `warn`, `error`) |
-| `METRICS_ENABLED` | boolean | `true` | Enables real-time Prometheus / OpenTelemetry telemetry export |
-| `TLS_MIN_VERSION` | string | `TLSv1.3` | Minimum allowable TLS protocol version for network traffic |
+| `pollingInterval` | integer | `10s` (SQS) / `15s` (Redis) | Metric check interval against external brokers |
+| `cooldownPeriod` | integer | `180s` | Stabilization window before scaling back down to 0 |
+| `minReplicaCount` | integer | `0` | Minimum active pods when queue is empty (Scale-to-Zero) |
+| `maxReplicaCount` | integer | `50` | Maximum allowable autoscaled pod instances |
+| `queueLength` | string | `10` | Target message count assigned per active worker pod |
+| `fallback.replicas` | integer | `5` | Safety replicas provisioned if external broker unreachable |
 
 ---
 
 ## :lock: Security, Compliance & Governance
 
-1. **Least-Privilege Execution:** Services run under restricted service accounts with zero root permissions.
-2. **Encrypted Data In-Flight & At-Rest:** AES-256 / KMS envelope encryption for persistent state and TLS 1.3 for network transport.
-3. **Automated Supply Chain Security:** All dependencies and container images verified against CVE databases using Trivy and Semgrep.
-4. **Zero-Secret Guarantee:** No hardcoded tokens, passwords, or private keys exist in this codebase.
+1. **Non-Root Execution:** All worker workloads run with `runAsNonRoot: true` and read-only root filesystems.
+2. **IAM Least Privilege:** AWS SQS worker pods assume dedicated IRSA roles limited strictly to `sqs:ReceiveMessage`, `sqs:DeleteMessage`, and `sqs:GetQueueAttributes`.
+3. **Graceful Draining:** `terminationGracePeriodSeconds: 60` ensures active message processing finishes before pod retirement.
+4. **Zero Static Credentials:** No AWS secret keys or Redis root passwords are stored in manifests.
 
 ---
 
@@ -118,7 +195,8 @@ cp config/example.env config/.env
 
 **Tayyab Masood**  
 Cloud Solutions Architect & Senior DevOps Engineer  
-- :globe_with_meridians: **GitHub:** [@T9113](https://github.com/T9113)  
+- :globe_with_meridians: **GitHub:** [@tayyabmasood911](https://github.com/tayyabmasood911)  
+- :email: **Email:** tayyabmasood911@gmail.com  
 - :scroll: **Certification:** AWS Certified Solutions Architect - Associate  
 
 ---

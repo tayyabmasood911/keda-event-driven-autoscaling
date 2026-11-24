@@ -1,0 +1,39 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: sqs-batch-job-scaler
+  namespace: default
+spec:
+  jobTargetRef:
+    parallelism: 1
+    completions: 1
+    activeDeadlineSeconds: 600
+    backoffLimit: 3
+    template:
+      spec:
+        containers:
+        - name: batch-processor
+          image: public.ecr.aws/docker/library/python:3.11-slim
+          command: ["python", "-m", "worker.process"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+        restartPolicy: OnFailure
+  pollingInterval: 15
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 5
+  maxReplicaCount: 20
+  scalingStrategy:
+    strategy: "default"
+  triggers:
+  - type: aws-sqs-queue
+    metadata:
+      queueURL: https://sqs.us-east-1.amazonaws.com/123456789012/batch-job-queue
+      queueLength: "5"
+      awsRegion: "us-east-1"
+    authenticationRef:
+      name: keda-aws-sqs-auth

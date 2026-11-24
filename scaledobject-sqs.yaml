@@ -2,14 +2,38 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: sqs-worker-scaler
+  namespace: default
 spec:
   scaleTargetRef:
     name: queue-worker-deployment
   minReplicaCount: 0
-  maxReplicaCount: 30
+  maxReplicaCount: 50
+  pollingInterval: 10
+  cooldownPeriod: 180
+  fallback:
+    failureThreshold: 3
+    replicas: 5
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        scaleDown:
+          stabilizationWindowSeconds: 180
+          policies:
+          - type: Percent
+            value: 20
+            periodSeconds: 60
   triggers:
   - type: aws-sqs-queue
     metadata:
       queueURL: https://sqs.us-east-1.amazonaws.com/123456789012/ingestion-queue
       queueLength: "10"
       awsRegion: "us-east-1"
+      identityOwner: "operator"
+    authenticationRef:
+      name: keda-aws-sqs-auth

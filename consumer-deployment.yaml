@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue-worker-deployment
+  namespace: default
+  labels:
+    app: queue-worker
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: queue-worker
+  template:
+    metadata:
+      labels:
+        app: queue-worker
+    spec:
+      serviceAccountName: keda-sqs-consumer-sa
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+      - name: worker
+        image: public.ecr.aws/docker/library/python:3.11-slim
+        command: ["python", "-u", "-c", "import time, sys; print('Worker online'); sys.stdout.flush(); time.sleep(3600)"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
